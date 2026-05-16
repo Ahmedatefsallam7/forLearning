@@ -1,0 +1,66 @@
+services:
+  app:
+    build: .
+    container_name: forlearning-app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    volumes:
+      - .:/var/www/html
+    networks:
+      - real-net
+    depends_on:
+      - mysql
+      - redis
+
+  nginx:
+    image: nginx:alpine
+    container_name: forlearning-nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    volumes:
+      - .:/var/www/html:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - real-net
+    depends_on:
+      - app
+
+  mysql:
+    image: mysql:8.0
+    container_name: forlearning-mysql
+    restart: unless-stopped
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-laravel}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-root}
+      MYSQL_USER: ${DB_USERNAME:-ahmed-atef}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-12341234}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - real-net
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  redis:
+    image: redis:alpine
+    container_name: forlearning-redis
+    restart: unless-stopped
+    networks:
+      - real-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  real-net:
+    driver: bridge
+
+volumes:
+  mysql-data:
